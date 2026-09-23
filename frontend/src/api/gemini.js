@@ -1,5 +1,5 @@
-const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY || ["gsk_", "0E1BSGHVsJ4r7WUdTNnOWGdyb3FYahyWZ1zOkbts89Vz9zu9Vvoh"].join("");
-const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || "AQ.Ab8RN6Ipj1uRaigDXlfQnUpAgHP1MldOR1zte9lZn5WBqZYe9A";
+const GROQ_API_KEY = "";
+const GEMINI_API_KEY = "";
 
 const GROQ_MODELS = [
   "groq/compound-mini",
@@ -54,7 +54,7 @@ async function callGeminiApi(prompt) {
   }
 
   // 2. Fallback to Gemini models
-  for (const modelName of CANDIDATE_MODELS) {
+  for (const modelName of GEMINI_API_KEY ? CANDIDATE_MODELS : []) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
       const requestBody = {

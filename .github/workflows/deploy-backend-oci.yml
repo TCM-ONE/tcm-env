@@ -16,13 +16,26 @@ concurrency:
 
 permissions:
   contents: read
-  deployments: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: tcm-backend
     steps:
       - uses: actions/checkout@v7
+
+      - name: Install verified SSH host key
+        env:
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ vars.BACKEND_HOST }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KNOWN_HOSTS"
+          test -n "$DEPLOY_HOST"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          ssh-keygen -F "$DEPLOY_HOST" -f ~/.ssh/known_hosts >/dev/null
 
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.10.0
@@ -40,44 +53,17 @@ jobs:
 
       - name: Stage and activate release with rollback
         env:
-          OCI_USER: ${{ vars.BACKEND_USER || secrets.OCI_USER }}
-          OCI_HOST: ${{ vars.BACKEND_HOST || secrets.OCI_HOST }}
+          OCI_USER: ${{ vars.BACKEND_USER }}
+          OCI_HOST: ${{ vars.BACKEND_HOST }}
         run: |
           set -euo pipefail
           RELEASE="/opt/tcm/releases/$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::12}"
           TARGET="$OCI_USER@$OCI_HOST"
-          ssh -o StrictHostKeyChecking=accept-new "$TARGET" "sudo install -d -o ubuntu -g ubuntu '$RELEASE'"
+          ssh -o StrictHostKeyChecking=yes "$TARGET" "sudo install -d -o ubuntu -g ubuntu '$RELEASE'"
           rsync -az --exclude node_modules --exclude .env --exclude uploads \
-            -e 'ssh -o StrictHostKeyChecking=accept-new' backend/ "$TARGET:$RELEASE/"
+            -e 'ssh -o StrictHostKeyChecking=yes' backend/ "$TARGET:$RELEASE/"
           scp deploy/backend/production.conf deploy/backend/activate.sh "$TARGET:$RELEASE/"
           ssh "$TARGET" "mkdir -p '$RELEASE/assets'"
           scp frontend/assets/icon.png "$TARGET:$RELEASE/assets/icon.png"
           ssh "$TARGET" "cd '$RELEASE' && npm ci --omit=dev --no-audit --no-fund && sudo bash '$RELEASE/activate.sh' '$RELEASE'"
           curl -fsS --max-time 15 https://api.thecodemunk.in/api/health | node -e 'let s="";process.stdin.on("data",c=>s+=c);process.stdin.on("end",()=>{const h=JSON.parse(s);process.exit(h.ok&&h.mongo===1?0:1)})'
-
-      - name: Report deployment status
-        if: always()
-        continue-on-error: true
-        uses: actions/github-script@v8
-        env:
-          DEPLOY_ENV: tcm-backend
-        with:
-          script: |
-            const state = '${{ job.status }}' === 'success' ? 'success' : 'error';
-            const description = `Deploy to OCI backend (${context.sha.slice(0, 7)}): ${'${{ job.status }}'}`;
-            const dep = await github.rest.repos.createDeployment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: context.sha,
-              environment: process.env.DEPLOY_ENV,
-              auto_merge: false,
-              required_contexts: [],
-            }).catch((e) => { console.log(`createDeployment skipped: ${e.message}`); return null; });
-            if (!dep) return;
-            await github.rest.repos.createDeploymentStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              deployment_id: dep.data.id,
-              state,
-              description,
-            }).catch((e) => { console.log(`createDeploymentStatus skipped: ${e.message}`); });

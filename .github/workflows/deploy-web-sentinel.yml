@@ -17,11 +17,11 @@ concurrency:
 
 permissions:
   contents: read
-  deployments: write
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment: app-thecodemunk-in
     timeout-minutes: 30
     env:
       EXPO_PUBLIC_API_URL: https://api.thecodemunk.in/api
@@ -58,6 +58,17 @@ jobs:
           echo "Verified $(du -sh web-dist | cut -f1) production export"
 
       - name: Set up deployment SSH key
+        env:
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          ssh-keygen -F "$SENTINEL_HOST" -f ~/.ssh/known_hosts >/dev/null
+
+      - name: Load deployment SSH key
         uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.OCI_SSH_KEY }}
@@ -67,7 +78,7 @@ jobs:
           set -euo pipefail
           RELEASE="$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::12}"
           TARGET="$SENTINEL_USER@$SENTINEL_HOST"
-          SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=15"
+          SSH_OPTS="-o StrictHostKeyChecking=yes -o ConnectTimeout=15"
 
           ssh $SSH_OPTS "$TARGET" \
             "sudo install -d -m 755 -o '$SENTINEL_USER' -g '$SENTINEL_USER' /var/www/tcm-web/releases/$RELEASE"
@@ -119,30 +130,3 @@ jobs:
           done
           echo "Public web verification failed"
           exit 1
-
-      - name: Report deployment status
-        if: always()
-        continue-on-error: true
-        uses: actions/github-script@v8
-        env:
-          DEPLOY_ENV: app-thecodemunk-in
-        with:
-          script: |
-            const state = '${{ job.status }}' === 'success' ? 'success' : 'error';
-            const description = `Deploy Expo web to sentinel (${context.sha.slice(0, 7)}): ${'${{ job.status }}'}`;
-            const dep = await github.rest.repos.createDeployment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: context.sha,
-              environment: process.env.DEPLOY_ENV,
-              auto_merge: false,
-              required_contexts: [],
-            }).catch((e) => { console.log(`createDeployment skipped: ${e.message}`); return null; });
-            if (!dep) return;
-            await github.rest.repos.createDeploymentStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              deployment_id: dep.data.id,
-              state,
-              description,
-            }).catch((e) => { console.log(`createDeploymentStatus skipped: ${e.message}`); });

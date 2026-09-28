@@ -243,7 +243,7 @@ jobs:
 
       - name: Email build notification with install + download links
         if: env.MAIL_APP_PASSWORD != ''
-        uses: dawidd6/action-send-mail@v3
+        uses: dawidd6/action-send-mail@v22
         with:
           server_address: smtp.gmail.com
           server_port: 465
@@ -274,7 +274,7 @@ jobs:
 
       - name: Email failure notification
         if: failure() && env.MAIL_APP_PASSWORD != ''
-        uses: dawidd6/action-send-mail@v3
+        uses: dawidd6/action-send-mail@v22
         with:
           server_address: smtp.gmail.com
           server_port: 465

@@ -5,6 +5,7 @@ import { User } from "../models/User.js";
 import { Mentor } from "../models/Mentor.js";
 import { sendOtpEmail } from "../services/emailService.js";
 import { requireAuth } from "../middleware/auth.js";
+import { selfSignupRole, verifyGoogleIdToken } from "../services/googleIdentity.js";
 
 export const authRouter = express.Router();
 
@@ -122,8 +123,10 @@ function getMemoryUsers(memoryStore) {
 authRouter.post("/register", async (req, res) => {
   try {
     const memoryStore = req.app.locals.memoryStore;
-    const { name, email, password, role = "student", mentorCategory = "TCM Information Tech", referralCode } = req.body;
+    const { name, email, password, mentorCategory = "TCM Information Tech", referralCode } = req.body;
+    const role = selfSignupRole(req.body.role);
 
+    if (!role) return res.status(400).json({ code: "INVALID_SIGNUP_ROLE", message: "Choose a learner or mentor account" });
     if (!name || !email || !password) {
       return res.status(400).json({ message: "Name, email, and password are required" });
     }
@@ -311,15 +314,15 @@ authRouter.post("/login", async (req, res) => {
 authRouter.post("/google", async (req, res) => {
   try {
     const memoryStore = req.app.locals.memoryStore;
-    const { email, name, avatarUrl, idToken, role = "student", referralCode } = req.body;
+    const { idToken, referralCode } = req.body;
+    const requestedRole = selfSignupRole(req.body.role);
+    if (!requestedRole) return res.status(400).json({ code: "INVALID_SIGNUP_ROLE", message: "Choose a learner or mentor account" });
+    const identity = await verifyGoogleIdToken(idToken);
+    if (!identity) return res.status(401).json({ code: "GOOGLE_IDENTITY_INVALID", message: "Google sign-in could not be verified" });
 
-    if (!email) {
-      return res.status(400).json({ message: "Google user email is required" });
-    }
-
-    const normalizedEmail = normalizeEmail(email);
-    const googleName = name || normalizedEmail.split("@")[0];
-    const googleAvatar = avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80";
+    const normalizedEmail = identity.email;
+    const googleName = identity.name || normalizedEmail.split("@")[0];
+    const googleAvatar = identity.picture;
     const defaultHandle = googleName.toLowerCase().replace(/[^a-z0-9]/g, "_").replace(/_+/g, "_").replace(/^_+|_+$/g, "");
     const cleanRefCode = referralCode ? String(referralCode).trim().toUpperCase() : "";
     const nowIso = new Date().toISOString();
@@ -335,9 +338,11 @@ authRouter.post("/google", async (req, res) => {
           email: normalizedEmail,
           handle: defaultHandle,
           passwordHash: await bcrypt.hash(`google_${Date.now()}`, 10),
-          role,
+          role: requestedRole,
+          isApproved: requestedRole !== "mentor",
           avatarUrl: googleAvatar,
           verified: true,
+          googleSubject: identity.subject,
           progress: 0,
           referredBy: cleanRefCode,
           referralAppliedAt: cleanRefCode ? new Date() : null,
@@ -346,11 +351,15 @@ authRouter.post("/google", async (req, res) => {
         };
         users.push(user);
       } else {
+        if (user.googleSubject && user.googleSubject !== identity.subject) {
+          return res.status(401).json({ code: "GOOGLE_IDENTITY_INVALID", message: "Google sign-in could not be verified" });
+        }
         // PRESERVE user custom name, handle, and avatarUrl if updated by user!
         if (!user.name) user.name = googleName;
         if (!user.handle) user.handle = defaultHandle;
         if (!user.avatarUrl) user.avatarUrl = googleAvatar;
         user.verified = true;
+        user.googleSubject = identity.subject;
         if (!user.referredBy && cleanRefCode) {
           user.referredBy = cleanRefCode;
           user.referralAppliedAt = new Date();
@@ -372,9 +381,11 @@ authRouter.post("/google", async (req, res) => {
         email: normalizedEmail,
         handle: defaultHandle,
         passwordHash,
-        role,
+        role: requestedRole,
+        isApproved: requestedRole !== "mentor",
         avatarUrl: googleAvatar,
         verified: true,
+        googleSubject: identity.subject,
         referredBy: cleanRefCode,
         referralAppliedAt: cleanRefCode ? new Date() : null
       });
@@ -401,11 +412,15 @@ authRouter.post("/google", async (req, res) => {
         }
       }
     } else {
+      if (user.googleSubject && user.googleSubject !== identity.subject) {
+        return res.status(401).json({ code: "GOOGLE_IDENTITY_INVALID", message: "Google sign-in could not be verified" });
+      }
       // PRESERVE user custom name, handle, and avatarUrl if updated by user!
       if (!user.name) user.name = googleName;
       if (!user.handle) user.handle = defaultHandle;
       if (!user.avatarUrl) user.avatarUrl = googleAvatar;
       user.verified = true;
+      user.googleSubject = identity.subject;
       if (!user.referredBy && cleanRefCode) {
         user.referredBy = cleanRefCode;
         user.referralAppliedAt = new Date();

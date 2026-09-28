@@ -5,6 +5,7 @@ import { Cohort } from "../models/Cohort.js";
 import { CohortMembership } from "../models/CohortMembership.js";
 import { Course } from "../models/Course.js";
 import { LiveSession } from "../models/LiveSession.js";
+import { LearnerOnboarding } from "../models/LearnerOnboarding.js";
 import { User } from "../models/User.js";
 import { beginAudit, finishAudit } from "../services/audit.js";
 import { isAdmin, membershipIsAccessible, requireCohortAccess, userIdOf } from "../services/cohortAccess.js";
@@ -170,57 +171,11 @@ cohortsRouter.post("/", requireAdmin, async (req, res, next) => {
   }
 });
 
-cohortsRouter.post("/:cohortId/memberships", requireAdmin, requireCohortAccess(["admin"]), async (req, res, next) => {
-  try {
-    const userId = String(req.body.userId || "");
-    if (!mongoose.isValidObjectId(userId)) return badRequest(res, "A valid userId is required");
-    const existing = await CohortMembership.findOne({ cohortId: req.cohortAccess.cohort._id, userId, role: "learner" }).lean();
-    if (existing) return res.status(200).json({ membership: existing, created: false });
-    if (!await User.exists({ _id: userId })) return badRequest(res, "userId does not reference an existing user");
-
-    const occupied = await CohortMembership.countDocuments({
-      cohortId: req.cohortAccess.cohort._id,
-      role: "learner",
-      status: { $in: ["invited", "active", "paused"] }
-    });
-    if (occupied >= req.cohortAccess.cohort.capacity) {
-      return res.status(409).json({ code: "COHORT_CAPACITY_REACHED", message: "Cohort capacity has been reached" });
-    }
-
-    const accessStartsAt = asDate(req.body.accessStartsAt);
-    const accessEndsAt = asDate(req.body.accessEndsAt);
-    if (accessStartsAt === null || accessEndsAt === null || (accessStartsAt && accessEndsAt && accessEndsAt <= accessStartsAt)) {
-      return badRequest(res, "Access dates must be valid and accessEndsAt must be after accessStartsAt");
-    }
-    const status = req.body.status || "invited";
-    if (!["invited", "active"].includes(status)) return badRequest(res, "Initial status must be invited or active");
-    const enrollmentSource = req.body.enrollmentSource || "manual";
-    if (!["manual", "legacy_mysql", "invitation", "self_enrolled", "admin_import"].includes(enrollmentSource)) return badRequest(res, "enrollmentSource is invalid");
-
-    const membership = await auditedMutation(req, {
-      action: "cohort.membership.create",
-      targetType: "CohortMembership",
-      cohortId: req.cohortAccess.cohort._id,
-      metadata: { userId, enrollmentSource }
-    }, () => CohortMembership.create({
-      cohortId: req.cohortAccess.cohort._id,
-      userId,
-      role: "learner",
-      status,
-      enrollmentSource,
-      accessStartsAt,
-      accessEndsAt,
-      activatedAt: status === "active" ? new Date() : undefined,
-      createdBy: userIdOf(req.user)
-    }));
-    res.status(201).json({ membership, created: true });
-  } catch (error) {
-    if (error?.code === 11000) {
-      const membership = await CohortMembership.findOne({ cohortId: req.cohortAccess.cohort._id, userId: req.body.userId, role: "learner" }).lean();
-      return res.status(200).json({ membership, created: false });
-    }
-    next(error);
-  }
+cohortsRouter.post("/:cohortId/memberships", requireAdmin, requireCohortAccess(["admin"]), async (req, res) => {
+  res.status(409).json({
+    code: "INVITATION_REQUIRED",
+    message: "Create a cohort invitation so the learner can verify their account and complete onboarding before access is activated"
+  });
 });
 
 cohortsRouter.patch("/:cohortId/memberships/:membershipId", requireAdmin, requireCohortAccess(["admin"]), async (req, res, next) => {
@@ -230,6 +185,16 @@ cohortsRouter.patch("/:cohortId/memberships/:membershipId", requireAdmin, requir
     if (!["active", "paused", "completed", "revoked"].includes(status)) return badRequest(res, "A valid membership status is required");
     const membership = await CohortMembership.findOne({ _id: req.params.membershipId, cohortId: req.cohortAccess.cohort._id });
     if (!membership) return res.status(404).json({ code: "MEMBERSHIP_NOT_FOUND", message: "Membership not found" });
+    if (status === "completed" && membership.status !== "active") {
+      return res.status(409).json({ code: "INVALID_MEMBERSHIP_TRANSITION", message: "A learner must be active before the cohort can be marked completed" });
+    }
+    if (status === "paused" && membership.status !== "active") {
+      return res.status(409).json({ code: "INVALID_MEMBERSHIP_TRANSITION", message: "Only an active learner can be paused" });
+    }
+    if (status === "active") {
+      const onboarding = await LearnerOnboarding.findOne({ membershipId: membership._id, status: "completed" }).lean();
+      if (!onboarding) return res.status(409).json({ code: "ONBOARDING_REQUIRED", message: "Complete learner onboarding before activating cohort access" });
+    }
 
     const updated = await auditedMutation(req, {
       action: "cohort.membership.status.update",

@@ -135,8 +135,9 @@ export default function LoginScreen({ onLogin }) {
 
     const hashStr = window.location.hash.substring(1) || window.location.search.substring(1);
     const params = new URLSearchParams(hashStr);
-    const accessToken = params.get("access_token") || params.get("id_token");
-    if (!accessToken) {
+    const idToken = params.get("id_token");
+    const accessToken = params.get("access_token");
+    if (!idToken) {
       return;
     }
 
@@ -152,11 +153,10 @@ export default function LoginScreen({ onLogin }) {
           }
         } catch (e) {}
 
-        if (!googleUser || !googleUser.email) {
+        if ((!googleUser || !googleUser.email) && idToken) {
           try {
-            const rawToken = params.get("id_token") || accessToken;
-            if (rawToken && rawToken.includes(".")) {
-              const base64Url = rawToken.split(".")[1];
+            if (idToken.includes(".")) {
+              const base64Url = idToken.split(".")[1];
               const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
               const jsonPayload = decodeURIComponent(
                 atob(base64)
@@ -174,7 +174,7 @@ export default function LoginScreen({ onLogin }) {
             googleUser.email,
             googleUser.name || googleUser.given_name || "Google User",
             googleUser.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(googleUser.name || "Google User")}&background=4285F4&color=fff`,
-            accessToken,
+            idToken,
             role
           );
           if (session) {
@@ -226,11 +226,13 @@ export default function LoginScreen({ onLogin }) {
             const userInfo = await GoogleSignin.signIn();
             const userObj = userInfo.data?.user || userInfo.user;
             if (userObj && userObj.email) {
+              const idToken = userInfo.data?.idToken || userInfo.idToken;
+              if (!idToken) throw new Error("Google did not return a verified sign-in token. Please try again.");
               const session = await googleLogin(
                 userObj.email,
                 userObj.name || userObj.givenName || "Google User",
                 userObj.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(userObj.name || "Google User")}&background=4285F4&color=fff`,
-                userInfo.data?.idToken || userInfo.idToken || "google_id_token",
+                idToken,
                 role
               );
               onLogin(session);
@@ -269,21 +271,22 @@ export default function LoginScreen({ onLogin }) {
       if (result && result.type === "success" && result.url) {
         const hash = result.url.split("#")[1] || result.url.split("?")[1] || "";
         const params = new URLSearchParams(hash);
-        const accessToken = params.get("access_token") || params.get("id_token");
+        const accessToken = params.get("access_token");
+        const idToken = params.get("id_token");
 
-        if (accessToken) {
+        if (idToken) {
           try {
-            const userRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+            const userRes = accessToken ? await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
               headers: { Authorization: `Bearer ${accessToken}` }
-            });
-            const googleUser = await userRes.json();
+            }) : null;
+            const googleUser = userRes?.ok ? await userRes.json() : {};
 
-            if (googleUser && googleUser.email) {
+            if (googleUser && (googleUser.email || idToken)) {
               const session = await googleLogin(
-                googleUser.email,
+                googleUser.email || "",
                 googleUser.name || googleUser.given_name || "Google User",
                 googleUser.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(googleUser.name || "Google User")}&background=4285F4&color=fff`,
-                accessToken,
+                idToken,
                 role
               );
               onLogin(session);
@@ -297,18 +300,7 @@ export default function LoginScreen({ onLogin }) {
         return; // User dismissed Google sign-in prompt
       }
 
-      // Native fallback only — NEVER create a fake Google account on web.
-      if (Platform.OS !== "web") {
-        const fallbackEmail = form.email && form.email.includes("@") ? form.email.trim() : "google.learner@tcm.com";
-        const session = await googleLogin(
-          fallbackEmail,
-          "Google Learner",
-          "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
-          "google_web_token",
-          role
-        );
-        onLogin(session);
-      }
+      throw new Error("Google sign-in did not complete. Please try again or use your email and password.");
     } catch (error) {
       Alert.alert("Google Sign-In", error.message || "Could not complete Google Sign-In.");
     } finally {

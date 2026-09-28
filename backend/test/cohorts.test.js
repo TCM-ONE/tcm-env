@@ -86,6 +86,7 @@ test("cohort routes enforce learner, assigned-instructor and admin boundaries", 
   Cohort.find = () => queryResult([cohort]);
   CohortMembership.find = () => queryResult([learnerMembership]);
   CohortMembership.findOne = (filter) => {
+    if (String(filter._id || "") === ids.membership) return queryResult({ ...learnerMembership, status: "invited", save: async () => {} });
     const requestedUser = String(filter.userId);
     if (requestedUser === ids.learner) return queryResult(learnerMembership);
     if (requestedUser === ids.target && duplicateMembership) {
@@ -146,29 +147,18 @@ test("cohort routes enforce learner, assigned-instructor and admin boundaries", 
     assert.equal(admin.status, 200);
     assert.equal((await admin.json()).accessKind, "admin");
 
-    const membershipUrl = `${base}/${ids.cohort}/memberships`;
-    const membershipBody = JSON.stringify({ userId: ids.target, status: "active", enrollmentSource: "manual" });
-    assert.equal((await fetch(membershipUrl, { method: "POST", headers: headers(ids.instructor), body: membershipBody })).status, 403);
-
-    const duplicate = await fetch(membershipUrl, { method: "POST", headers: headers(ids.admin), body: membershipBody });
-    assert.equal(duplicate.status, 200);
-    assert.equal((await duplicate.json()).created, false);
+    const directEnrollment = await fetch(`${base}/${ids.cohort}/memberships`, {
+      method: "POST", headers: headers(ids.admin), body: JSON.stringify({ userId: ids.target, status: "active" })
+    });
+    assert.equal(directEnrollment.status, 409);
+    assert.equal((await directEnrollment.json()).code, "INVITATION_REQUIRED");
+    const cannotSkipOnboarding = await fetch(`${base}/${ids.cohort}/memberships/${ids.membership}`, {
+      method: "PATCH", headers: headers(ids.admin), body: JSON.stringify({ status: "completed" })
+    });
+    assert.equal(cannotSkipOnboarding.status, 409);
+    assert.equal((await cannotSkipOnboarding.json()).code, "INVALID_MEMBERSHIP_TRANSITION");
     assert.equal(membershipCreates, 0);
     assert.equal(auditWrites, 0);
-
-    duplicateMembership = false;
-    occupiedSeats = cohort.capacity;
-    const full = await fetch(membershipUrl, { method: "POST", headers: headers(ids.admin), body: membershipBody });
-    assert.equal(full.status, 409);
-    assert.equal((await full.json()).code, "COHORT_CAPACITY_REACHED");
-    assert.equal(auditWrites, 0);
-
-    occupiedSeats = 1;
-    const created = await fetch(membershipUrl, { method: "POST", headers: headers(ids.admin), body: membershipBody });
-    assert.equal(created.status, 201);
-    assert.equal((await created.json()).created, true);
-    assert.equal(membershipCreates, 1);
-    assert.equal(auditWrites, 1);
   } finally {
     server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));

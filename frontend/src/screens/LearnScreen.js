@@ -274,26 +274,6 @@ export default function LearnScreen({ learn = {}, user = {}, session, onOpenSide
     setShowPaymentModal(true);
   }
 
-  function handlePaymentComplete(course) {
-    if (!course) return;
-    setContinueLearningList((prev) => {
-      const exists = prev.some((c) => c.id === course.id);
-      if (exists) return prev;
-      return [
-        {
-          id: course.id || `course_${Date.now()}`,
-          title: course.title,
-          subtitle: `Enrolled • ${course.category || "TCM One Course"}`,
-          progress: 5,
-          icon: "book-open",
-          iconColor: "#0A6836",
-          bgColor: "#E8F5E9"
-        },
-        ...prev
-      ];
-    });
-  }
-
   function handleScrollBanner(event) {
     const slideSize = event.nativeEvent.layoutMeasurement.width;
     const offset = event.nativeEvent.contentOffset.x;
@@ -975,7 +955,6 @@ export default function LearnScreen({ learn = {}, user = {}, session, onOpenSide
         visible={showPaymentModal}
         course={selectedPaymentCourse}
         onClose={() => setShowPaymentModal(false)}
-        onPaymentComplete={handlePaymentComplete}
       />
 
       <TcmAiExamModal

@@ -12,6 +12,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  credential-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Reject privileged credentials in source
+        run: node scripts/ci/check-client-secrets.mjs
+
   backend-health:
     runs-on: ubuntu-latest
     steps:
@@ -106,6 +115,7 @@ jobs:
         run: |
           test -s web-dist-check/index.html
           find web-dist-check/_expo/static/js/web -type f -name '*.js' -size +100k -print -quit | grep -q .
+          node scripts/ci/check-client-secrets.mjs web-dist-check
 
   admin-dashboard:
     runs-on: ubuntu-latest

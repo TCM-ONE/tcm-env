@@ -287,7 +287,7 @@ function isQuestionMessage(item) {
 }
 
 async function generateDoubtAnswerWithLiveAI(query, category = "Academic") {
-  const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY || ["gsk_", "0E1BSGHVsJ4r7WUdTNnOWGdyb3FYahyWZ1zOkbts89Vz9zu9Vvoh"].join("");
+  const GROQ_API_KEY = "";
   const GROQ_MODELS = [
     "groq/compound-mini",
     "groq/compound",

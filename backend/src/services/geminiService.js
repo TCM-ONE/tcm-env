@@ -1,5 +1,5 @@
-const GROQ_API_KEY = process.env.GROQ_API_KEY || ["gsk_", "0E1BSGHVsJ4r7WUdTNnOWGdyb3FYahyWZ1zOkbts89Vz9zu9Vvoh"].join("");
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AQ.Ab8RN6Ipj1uRaigDXlfQnUpAgHP1MldOR1zte9lZn5WBqZYe9A";
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 const GROQ_MODELS = [
   "groq/compound-mini",
@@ -75,7 +75,7 @@ INSTRUCTIONS FOR PHLAPPY AI:
     ? `[System Instruction: ${systemInstruction}]\n\nStudent Question / Code Doubt: ${cleanPrompt}\n\nPROVIDE A DETAILED, HIGHLY ACCURATE, PROFESSIONAL & CLEAR STEP-BY-STEP EXPLANATION.`
     : cleanPrompt;
 
-  for (const modelName of GEMINI_MODELS) {
+  for (const modelName of GEMINI_API_KEY ? GEMINI_MODELS : []) {
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
       const requestBody = {
@@ -196,4 +196,3 @@ Aapke doubt **"${query}"** ka quick explanation:
 
 Agar specific code sample chahiye to specify karke puch sakte ho! 🚀`;
 }
-

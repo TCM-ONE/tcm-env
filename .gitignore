@@ -32,6 +32,7 @@ frontend/android/
 tcmindia-firebase-adminsdk-fbsvc-0eed6d0266.json
 # web export output (built fresh by CI — never commit)
 tcm-web/
+web-dist-*/
 
 # credential vault (local backup — never commit)
 secrets/

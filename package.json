@@ -13,6 +13,7 @@
     "ios": "npm run ios -w frontend",
     "web": "npm run web -w frontend",
     "build:web": "npm run build:web -w frontend",
+    "test:backend": "npm test -w backend",
     "seed": "npm run seed -w backend"
   },
   "devDependencies": {

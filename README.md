@@ -9,7 +9,7 @@ Separated React Native frontend and MongoDB backend for Talent & Career Mission.
 
 ## Product direction
 
-The first launch target is a small, instructor-led cybersecurity basics cohort. See the [cohort MVP brief](docs/product/CYBERSECURITY_COHORT_MVP.md), [critical user journeys](docs/product/CRITICAL_USER_JOURNEYS.md), and [research notes](docs/product/RESEARCH_NOTES.md). Architecture decisions live in [`docs/adr`](docs/adr).
+The first launch target is a small, instructor-led cybersecurity basics cohort. See the [cohort MVP brief](docs/product/CYBERSECURITY_COHORT_MVP.md), [critical user journeys](docs/product/CRITICAL_USER_JOURNEYS.md), and [research notes](docs/product/RESEARCH_NOTES.md). The backend foundation is documented in the [cohort API contract](docs/api/COHORTS_V1.md) and [rollout/rollback guide](docs/migration/COHORT_FOUNDATION.md). Architecture decisions live in [`docs/adr`](docs/adr).
 
 ## Setup
 

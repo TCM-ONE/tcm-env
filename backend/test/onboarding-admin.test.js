@@ -22,7 +22,11 @@ function queryResult(value) {
 
 test("administrator invitations store only a token hash and can be revoked", { concurrency: false }, async () => {
   const oldEnv = process.env.NODE_ENV;
+  const oldPublicOrigin = process.env.PUBLIC_ORIGIN;
+  const oldAppOrigin = process.env.TCM_APP_ORIGIN;
   process.env.NODE_ENV = "production";
+  process.env.PUBLIC_ORIGIN = "https://api.thecodemunk.in";
+  delete process.env.TCM_APP_ORIGIN;
   const ids = {
     admin: "507f1f77bcf86cd799439011",
     mentor: "507f1f77bcf86cd799439012",
@@ -78,6 +82,7 @@ test("administrator invitations store only a token hash and can be revoked", { c
     const created = await fetch(base, { method: "POST", headers: headers(ids.admin), body: JSON.stringify({ email: "Learner@Example.test" }) });
     assert.equal(created.status, 201);
     const response = await created.json();
+    assert.equal(new URL(response.inviteUrl).origin, "https://app.thecodemunk.in");
     const returnedToken = new URLSearchParams(new URL(response.inviteUrl).hash.slice(1)).get("token");
     assert.match(returnedToken, /^[A-Za-z0-9_-]{43}$/);
     assert.equal(storedInvitation.email, "learner@example.test");
@@ -109,5 +114,9 @@ test("administrator invitations store only a token hash and can be revoked", { c
     AuditLog.create = originals.auditCreate;
     if (oldEnv === undefined) delete process.env.NODE_ENV;
     else process.env.NODE_ENV = oldEnv;
+    if (oldPublicOrigin === undefined) delete process.env.PUBLIC_ORIGIN;
+    else process.env.PUBLIC_ORIGIN = oldPublicOrigin;
+    if (oldAppOrigin === undefined) delete process.env.TCM_APP_ORIGIN;
+    else process.env.TCM_APP_ORIGIN = oldAppOrigin;
   }
 });

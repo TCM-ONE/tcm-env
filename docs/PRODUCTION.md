@@ -18,7 +18,7 @@ The hosting tenancy has one subscribed region (`ap-hyderabad-1`) and these two r
 - Website: `https://app.thecodemunk.in`; admin: `https://admin.thecodemunk.in`.
 - `/opt/tcm/backend` points to a versioned directory under `/opt/tcm/releases`.
 - `/opt/tcm/.env` is root-owned, mode 0600, and loaded by systemd. Deployment never overwrites it from a potentially stale GitHub secret.
-- `/etc/systemd/system/tcm-backend.service.d/production.conf` sets production mode, loopback binding, `UPLOADS_DIR=/opt/tcm/uploads` and `PUBLIC_ORIGIN=https://api.thecodemunk.in`.
+- `/etc/systemd/system/tcm-backend.service.d/production.conf` sets production mode, loopback binding, `UPLOADS_DIR=/opt/tcm/uploads` and `PUBLIC_ORIGIN=https://api.thecodemunk.in`. `PUBLIC_ORIGIN` is the API/public-file origin; learner invitation links use `TCM_APP_ORIGIN`, which defaults to `https://app.thecodemunk.in` and must be an HTTPS origin in production. Keep the two settings separate.
 - Uploaded files are independent of application releases. Never rsync-delete `/opt/tcm/uploads` or put it inside a release.
 - The service has a read-only filesystem except the upload directory and private temporary storage; capabilities are cleared. Caddy owns public HTTP/HTTPS. SSH is key-only; host and OCI firewalls allow SSH and web ports, not application ports.
 - CI tests startup, failed writes, media recovery and the standalone dependency lockfile. Backend deployments stage/install before switching the symlink, then require database health. Failed activation restores the previous symlink.

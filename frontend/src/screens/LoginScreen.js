@@ -67,7 +67,7 @@ function TcmOneBrandHeader({ compact = false }) {
   );
 }
 
-export default function LoginScreen({ onLogin }) {
+export default function LoginScreen({ onLogin, preserveInvitation = false }) {
   const { theme } = useTheme();
   const { width, height } = useWindowDimensions();
   const [mode, setMode] = useState("login");
@@ -103,14 +103,16 @@ export default function LoginScreen({ onLogin }) {
   const compact = height < 740;
   const panelMaxWidth = Math.min(width - 24, 440);
   const activeRole = useMemo(() => roleOptions.find((item) => item.key === role) || roleOptions[0], [role]);
+  const showGoogleSignIn = !(preserveInvitation && Platform.OS === "web");
 
   function updateField(key, value) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
   function openSignup(nextRole = "student") {
-    setRole(nextRole);
-    setMode(nextRole === "mentor" ? "mentor" : "signup");
+    const selectedRole = preserveInvitation ? "student" : nextRole;
+    setRole(selectedRole);
+    setMode(selectedRole === "mentor" ? "mentor" : "signup");
   }
 
   useEffect(() => {
@@ -400,7 +402,7 @@ export default function LoginScreen({ onLogin }) {
         name: form.name.trim(),
         email: form.email.trim(),
         password: form.password,
-        role: mode === "mentor" ? "mentor" : role,
+        role: preserveInvitation ? "student" : mode === "mentor" ? "mentor" : role,
         mentorCategory,
         referralCode: form.referralCode ? form.referralCode.trim().toUpperCase() : ""
       });
@@ -436,7 +438,9 @@ export default function LoginScreen({ onLogin }) {
               {mode === "mentor" ? "Join as a mentor and inspire the future" : "Join TCM One and start your learning journey"}
             </Text>
 
-            {mode === "mentor" ? <MentorIntro /> : <RoleTabs role={role} setRole={setRole} setMode={setMode} />}
+            {mode === "mentor" ? <MentorIntro /> : preserveInvitation ? (
+              <Text style={[styles.subheading, { color: theme.subtext }]}>This invitation creates a learner account so your cohort access is assigned correctly.</Text>
+            ) : <RoleTabs role={role} setRole={setRole} setMode={setMode} />}
 
             <Text style={[styles.blockTitle, { color: theme.text }]}>{mode === "mentor" ? "Select Your Specialization Category:" : ""}</Text>
             {mode === "mentor" ? (
@@ -522,8 +526,14 @@ export default function LoginScreen({ onLogin }) {
               <Text style={styles.primaryText}>{loading ? "Please wait..." : mode === "mentor" ? "Continue" : "Sign Up"}</Text>
             </Pressable>
 
-            <Divider label="or sign up with" />
-            <SocialRow onGooglePress={handleGoogleSignIn} />
+            {showGoogleSignIn ? (
+              <>
+                <Divider label="or sign up with" />
+                <SocialRow onGooglePress={handleGoogleSignIn} />
+              </>
+            ) : (
+              <Text style={[styles.subheading, { color: theme.subtext }]}>Use email and password for this invitation so it stays safely attached while you sign in.</Text>
+            )}
 
             <Text style={[styles.switchText, { color: theme.subtext }]}>
               Already have an account?{" "}
@@ -581,8 +591,14 @@ export default function LoginScreen({ onLogin }) {
             <Text style={styles.primaryText}>{loading ? "Logging in..." : "Login"}</Text>
           </Pressable>
 
-          <Divider label="or continue with" />
-          <SocialRow onGooglePress={handleGoogleSignIn} />
+          {showGoogleSignIn ? (
+            <>
+              <Divider label="or continue with" />
+              <SocialRow onGooglePress={handleGoogleSignIn} />
+            </>
+          ) : (
+            <Text style={[styles.subheading, { color: theme.subtext }]}>Use email and password for this invitation so it stays safely attached while you sign in.</Text>
+          )}
           <Divider label="or login as" />
 
           <View style={styles.roles}>

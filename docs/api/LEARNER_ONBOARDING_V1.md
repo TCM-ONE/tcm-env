@@ -16,11 +16,11 @@ Administrator only. Revokes an invitation that has not been accepted. Revoke and
 
 ### `POST /invitations/preview`
 
-Body: `{ "token": "..." }`. Requires sign-in to an account whose verified email matches the pending invitation. This endpoint does not consume the invitation. It returns a limited cohort/course summary, dates, timezone, and instructor names so the learner can confirm what they are joining before accepting. It does not return meeting links, pricing fields, invitation email, or the token. Invalid, expired, revoked, already-used, and email-mismatched invitations share the same public 404 response.
+Body: `{ "token": "..." }`. Requires sign-in to a student account whose verified email matches the pending invitation. This endpoint does not consume the invitation. It returns a limited cohort/course summary, dates, timezone, and instructor names so the learner can confirm what they are joining before accepting. It does not return meeting links, pricing fields, invitation email, or the token. Invalid, expired, revoked, already-used, wrong-role, and email-mismatched invitations share the same public 404 response.
 
 ### `POST /invitations/accept`
 
-Body: `{ "token": "..." }`. The frontend should read the token from the URL fragment and remove it from browser history before sending it. The token is single-use, expires, and is tied to the authenticated account email. Invalid, expired, revoked, reused, and email-mismatched tokens share one public 404 response. Acceptance creates an invited membership with no class access.
+Body: `{ "token": "..." }`. The frontend should read the token from the URL fragment and remove it from browser history before sending it. The token is single-use, expires, and is tied to the authenticated student account email. Invalid, expired, revoked, reused, wrong-role, and email-mismatched tokens share one public 404 response. Acceptance creates an invited membership with no class access.
 
 ### `GET /:cohortId`
 

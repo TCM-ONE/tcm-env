@@ -21,6 +21,18 @@ const SAFE_LAB_VERSION = process.env.TCM_SAFE_LAB_VERSION || "cybersecurity-safe
 const ADULT_CONFIRMATION_VERSION = "adult-18plus-v1";
 const inviteAttemptLimit = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: "draft-8", legacyHeaders: false });
 
+function learnerAppOrigin() {
+  const configuredOrigin = process.env.TCM_APP_ORIGIN || "https://app.thecodemunk.in";
+  const parsedOrigin = new URL(configuredOrigin);
+  if (parsedOrigin.username || parsedOrigin.password || parsedOrigin.pathname !== "/" || parsedOrigin.search || parsedOrigin.hash) {
+    throw new Error("TCM_APP_ORIGIN must be an origin URL without credentials, path, query or fragment");
+  }
+  if (process.env.NODE_ENV === "production" && parsedOrigin.protocol !== "https:") {
+    throw new Error("TCM_APP_ORIGIN must use HTTPS in production");
+  }
+  return parsedOrigin.origin;
+}
+
 function normalizeEmail(value = "") {
   return String(value).trim().toLowerCase();
 }
@@ -112,6 +124,7 @@ onboardingRouter.post("/:cohortId/invitations", requireAdmin, requireCohortAcces
       return res.status(409).json({ code: "COHORT_CAPACITY_REACHED", message: "Cohort invitation capacity has been reached" });
     }
 
+    const origin = learnerAppOrigin();
     const rawToken = crypto.randomBytes(32).toString("base64url");
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
     const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
@@ -126,7 +139,6 @@ onboardingRouter.post("/:cohortId/invitations", requireAdmin, requireCohortAcces
       expiresAt,
       invitedBy: userIdOf(req.user)
     }));
-    const origin = (process.env.PUBLIC_ORIGIN || "https://app.thecodemunk.in").replace(/\/$/, "");
     const inviteUrl = `${origin}/onboarding/invite#token=${encodeURIComponent(rawToken)}`;
     res.status(201).json({
       invitation: { id: invitation._id, email, cohortId: invitation.cohortId, expiresAt },

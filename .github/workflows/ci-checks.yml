@@ -3,22 +3,8 @@ name: CI Checks
 on:
   pull_request:
     branches: [main]
-    paths:
-      - "backend/**"
-      - "frontend/**"
-      - "admin-dashboard/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/ci-checks.yml"
   push:
     branches: [main]
-    paths:
-      - "backend/**"
-      - "frontend/**"
-      - "admin-dashboard/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/ci-checks.yml"
   workflow_dispatch:
 
 concurrency:

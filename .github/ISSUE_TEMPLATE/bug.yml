@@ -1,0 +1,31 @@
+name: Bug report
+description: Report a reproducible defect without including secrets or personal data.
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Who is affected and which journey is broken?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and reproduction
+      description: Include sanitized logs, timestamps, steps, expected and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: App/API/admin, version or commit, browser/device, and production or staging.
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety notes
+      description: Known workaround, blast radius and whether rollback is needed.

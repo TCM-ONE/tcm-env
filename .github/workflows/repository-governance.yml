@@ -1,0 +1,26 @@
+name: Repository Governance
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Repository operating-system audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+      - name: Audit governance and tracked artifacts
+        run: python3 .codex/scripts/repo_operating_system_audit.py

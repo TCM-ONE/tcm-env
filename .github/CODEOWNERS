@@ -1,0 +1,8 @@
+# Default: both founders share review responsibility.
+* @5h4d0wn1k @ayushman-it
+
+# Platform and production changes require platform ownership visibility.
+/.github/ @5h4d0wn1k @ayushman-it
+/deploy/ @5h4d0wn1k @ayushman-it
+/docs/PRODUCTION.md @5h4d0wn1k @ayushman-it
+/docs/migration/ @5h4d0wn1k @ayushman-it

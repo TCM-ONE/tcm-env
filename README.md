@@ -7,6 +7,10 @@ Separated React Native frontend and MongoDB backend for Talent & Career Mission.
 - `frontend` - Expo React Native app with splash, login, and home screens.
 - `backend` - Express API using MongoDB through Mongoose.
 
+## Product direction
+
+The first launch target is a small, instructor-led cybersecurity basics cohort. See the [cohort MVP brief](docs/product/CYBERSECURITY_COHORT_MVP.md), [critical user journeys](docs/product/CRITICAL_USER_JOURNEYS.md), and [research notes](docs/product/RESEARCH_NOTES.md). Architecture decisions live in [`docs/adr`](docs/adr).
+
 ## Setup
 
 1. Copy backend environment values:

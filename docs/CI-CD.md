@@ -9,7 +9,7 @@ See [Production operations](PRODUCTION.md) for verified host inventory, persiste
 - **Deploy dl-server**: provisions the one-time download service on the backend host and verifies a generated link end to end.
 - **Android releases and OTA updates**: manual workflows or version-tag pushes; ordinary web/backend pushes do not publish native releases.
 
-The `tcm-backend`, `app-thecodemunk-in`, and `admin-thecodemunk-in` environments accept deployments only from `main`. One of the two founders must approve each job, the initiator cannot approve their own deployment, and administrators cannot bypass the gate. The workflow job declares its environment before it can read deployment secrets or open SSH connections; GitHub's native environment deployment is the audit record.
+The `tcm-backend`, `app-thecodemunk-in`, and `admin-thecodemunk-in` environments accept deployments only from `main`. The `tcm-mobile-release` environment accepts `main` and version tags (`v*`) for native builds, store distribution, and OTA publication. One of the two founders must approve each job, the initiator cannot approve their own deployment, and administrators cannot bypass the gate. The workflow job declares its environment before it can read deployment secrets or open SSH connections; GitHub's native environment deployment is the audit record.
 
 Environment variables `BACKEND_HOST`, `BACKEND_USER`, `SENTINEL_HOST`, and `SENTINEL_USER` select deployment targets. Environment secrets `OCI_SSH_KEY` and `SSH_KNOWN_HOSTS` provide authentication and the independently verified ED25519 host-key pin. Every deployment uses `StrictHostKeyChecking=yes`; a missing or changed key fails before upload. `TCM_API_URL` supplies the native API URL. Web builds use `https://api.thecodemunk.in/api`.
 

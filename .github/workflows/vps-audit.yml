@@ -6,11 +6,25 @@ on:
 jobs:
   audit:
     runs-on: ubuntu-latest
+    environment: tcm-backend
     concurrency:
       group: vps-audit
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v7
+
+      - name: Install verified SSH host key
+        env:
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          OCI_HOST: ${{ vars.BACKEND_HOST }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KNOWN_HOSTS"
+          test -n "$OCI_HOST"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          ssh-keygen -F "$OCI_HOST" -f ~/.ssh/known_hosts >/dev/null
 
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.10.0
@@ -19,10 +33,10 @@ jobs:
 
       - name: Run audit over SSH (read-only)
         env:
-          OCI_USER: ${{ secrets.OCI_USER }}
-          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ vars.BACKEND_USER }}
+          OCI_HOST: ${{ vars.BACKEND_HOST }}
         run: |
-          ssh -o StrictHostKeyChecking=accept-new "$OCI_USER@$OCI_HOST" 'sudo bash -s' <<'AUDIT'
+          ssh -o StrictHostKeyChecking=yes "$OCI_USER@$OCI_HOST" 'sudo bash -s' <<'AUDIT'
           set +e
           echo "===== SYSTEM ====="
           date -u; uname -a

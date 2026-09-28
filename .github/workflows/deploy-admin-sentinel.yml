@@ -63,12 +63,16 @@ jobs:
           set -euo pipefail
           RELEASE="$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::12}"
           TARGET="$SENTINEL_USER@$SENTINEL_HOST"
-          SSH_OPTS="-o StrictHostKeyChecking=yes -o ConnectTimeout=15"
-          ssh $SSH_OPTS "$TARGET" "sudo install -d -m 755 -o '$SENTINEL_USER' -g '$SENTINEL_USER' /var/www/tcm-admin/releases/$RELEASE"
-          rsync -az --delete --delay-updates -e "ssh $SSH_OPTS" admin-dashboard/dist/ "$TARGET:/var/www/tcm-admin/releases/$RELEASE/"
-          scp $SSH_OPTS deploy/sentinel/admin.Caddyfile "$TARGET:/tmp/tcm-admin-Caddyfile"
-          scp $SSH_OPTS deploy/sentinel/Caddyfile "$TARGET:/tmp/tcm-web-Caddyfile"
-          ssh $SSH_OPTS "$TARGET" "RELEASE='$RELEASE' sudo -E bash -s" <<'REMOTE'
+          SSH_OPTS=(-o StrictHostKeyChecking=yes -o ConnectTimeout=15)
+          # Release path and configured owner intentionally expand locally.
+          # shellcheck disable=SC2029
+          ssh "${SSH_OPTS[@]}" "$TARGET" "sudo install -d -m 755 -o '$SENTINEL_USER' -g '$SENTINEL_USER' /var/www/tcm-admin/releases/$RELEASE"
+          rsync -az --delete --delay-updates -e "ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=15" admin-dashboard/dist/ "$TARGET:/var/www/tcm-admin/releases/$RELEASE/"
+          scp "${SSH_OPTS[@]}" deploy/sentinel/admin.Caddyfile "$TARGET:/tmp/tcm-admin-Caddyfile"
+          scp "${SSH_OPTS[@]}" deploy/sentinel/Caddyfile "$TARGET:/tmp/tcm-web-Caddyfile"
+          # RELEASE is intentionally passed into the remote shell.
+          # shellcheck disable=SC2029
+          ssh "${SSH_OPTS[@]}" "$TARGET" "RELEASE='$RELEASE' sudo -E bash -s" <<'REMOTE'
           set -euo pipefail
           test -s "/var/www/tcm-admin/releases/$RELEASE/index.html"
           install -d -m 755 /etc/caddy/conf.d

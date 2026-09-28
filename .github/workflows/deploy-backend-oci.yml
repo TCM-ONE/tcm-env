@@ -59,11 +59,17 @@ jobs:
           set -euo pipefail
           RELEASE="/opt/tcm/releases/$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA::12}"
           TARGET="$OCI_USER@$OCI_HOST"
+          # Release path intentionally expands locally.
+          # shellcheck disable=SC2029
           ssh -o StrictHostKeyChecking=yes "$TARGET" "sudo install -d -o ubuntu -g ubuntu '$RELEASE'"
           rsync -az --exclude node_modules --exclude .env --exclude uploads \
             -e 'ssh -o StrictHostKeyChecking=yes' backend/ "$TARGET:$RELEASE/"
-          scp deploy/backend/production.conf deploy/backend/activate.sh "$TARGET:$RELEASE/"
-          ssh "$TARGET" "mkdir -p '$RELEASE/assets'"
-          scp frontend/assets/icon.png "$TARGET:$RELEASE/assets/icon.png"
-          ssh "$TARGET" "cd '$RELEASE' && npm ci --omit=dev --no-audit --no-fund && sudo bash '$RELEASE/activate.sh' '$RELEASE'"
+          scp -o StrictHostKeyChecking=yes deploy/backend/production.conf deploy/backend/activate.sh "$TARGET:$RELEASE/"
+          # Release path intentionally expands locally.
+          # shellcheck disable=SC2029
+          ssh -o StrictHostKeyChecking=yes "$TARGET" "mkdir -p '$RELEASE/assets'"
+          scp -o StrictHostKeyChecking=yes frontend/assets/icon.png "$TARGET:$RELEASE/assets/icon.png"
+          # Release path intentionally expands locally.
+          # shellcheck disable=SC2029
+          ssh -o StrictHostKeyChecking=yes "$TARGET" "cd '$RELEASE' && npm ci --omit=dev --no-audit --no-fund && sudo bash '$RELEASE/activate.sh' '$RELEASE'"
           curl -fsS --max-time 15 https://api.thecodemunk.in/api/health | node -e 'let s="";process.stdin.on("data",c=>s+=c);process.stdin.on("end",()=>{const h=JSON.parse(s);process.exit(h.ok&&h.mongo===1?0:1)})'

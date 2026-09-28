@@ -39,6 +39,8 @@ jobs:
           set -e
           node backend/src/server.js > backend-server.log 2>&1 &
           NODE_PID=$!
+          # Invoked indirectly by trap.
+          # shellcheck disable=SC2329
           cleanup() {
             kill "$NODE_PID" 2>/dev/null || true
           }

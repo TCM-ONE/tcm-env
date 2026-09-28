@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.658.0",
-    "@babel/core": "^7.26.0",
+    "@babel/core": "^8.0.6",
     "babel-preset-expo": "~57.0.0"
   },
   "expo": {

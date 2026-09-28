@@ -65,65 +65,17 @@ async function request(path, options = {}) {
 }
 
 export async function login(email, password) {
-  try {
-    return await request("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password })
-    });
-  } catch (err) {
-    if (err.status === 401 || err.status === 400 || err.status === 404 || err.status === 409) {
-      throw err;
-    }
-    const userHandle = email ? email.split("@")[0] : "member";
-    return {
-      token: `local_token_${Date.now()}`,
-      user: {
-        id: `local-user-${Date.now()}`,
-        name: userHandle.charAt(0).toUpperCase() + userHandle.slice(1),
-        email: email,
-        role: "student",
-        avatarUrl: "",
-        handle: userHandle,
-        verified: true,
-        memberBadge: "TCM One Member",
-        joinedDate: "Joined Aug 2026",
-        stats: { postsCount: 0, followers: "0", following: 0, reviews: "0" },
-        quickTools: { savedCount: 0, draftsCount: 0, deletedCount: 0 },
-        progress: 0
-      }
-    };
-  }
+  return request("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password })
+  });
 }
 
 export async function register(payload) {
-  try {
-    return await request("/auth/register", {
-      method: "POST",
-      body: JSON.stringify(payload)
-    });
-  } catch (err) {
-    if (err.status === 409 || err.status === 400) {
-      throw err;
-    }
-    const userHandle = payload.email ? payload.email.split("@")[0] : "member";
-    return {
-      token: `local_token_${Date.now()}`,
-      user: {
-        id: `local-user-${Date.now()}`,
-        name: payload.name || "TCM One Learner",
-        email: payload.email,
-        role: payload.role || "student",
-        avatarUrl: "",
-        handle: userHandle,
-        verified: true,
-        memberBadge: payload.role === "mentor" ? "TCM One Mentor" : "TCM One Member",
-        joinedDate: "Joined Aug 2026",
-        stats: { postsCount: 0, followers: "0", following: 0, reviews: "0" },
-        quickTools: { savedCount: 0, draftsCount: 0, deletedCount: 0 },
-        progress: 0
-      }
-    };
-  }
+  return request("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
 }
 
 export function deleteAccount(token) {
@@ -837,32 +789,10 @@ export function registerPushTokenApi(token, pushToken, platform) {
 }
 
 export async function googleLogin(email, name, avatarUrl, idToken, role = "student", referralCode = "") {
-  try {
-    return await request("/auth/google", {
-      method: "POST",
-      body: JSON.stringify({ email, name, avatarUrl, idToken, role, referralCode })
-    });
-  } catch (err) {
-    if (err.status === 401 || err.status === 400 || err.status === 409) {
-      throw err;
-    }
-    const cleanEmail = email || "google.user@tcm.com";
-    const userHandle = cleanEmail.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "_");
-    return {
-      token: `google_token_${Date.now()}`,
-      user: {
-        id: `google_${Date.now()}`,
-        name: name || "Google User",
-        email: cleanEmail,
-        handle: userHandle,
-        role: role || "student",
-        avatarUrl: avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "Google User")}&background=4285F4&color=fff`,
-        verified: true,
-        progress: 0,
-        wallet: { balance: 50, coins: 100, transactions: [] }
-      }
-    };
-  }
+  return request("/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ email, name, avatarUrl, idToken, role, referralCode })
+  });
 }
 
 export function sendForgotPasswordOtp(email) {
@@ -1436,7 +1366,6 @@ export function submitGovernmentMockTest(testId, payload) {
     body: JSON.stringify(payload)
   });
 }
-
 
 
 

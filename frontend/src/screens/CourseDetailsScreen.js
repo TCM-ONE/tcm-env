@@ -32,7 +32,6 @@ export default function CourseDetailsScreen({ session, user = {}, courseId = "p1
   const [loading, setLoading] = useState(true);
   const [bookmarked, setBookmarked] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [isEnrolledState, setIsEnrolledState] = useState(false);
   const [expandedAbout, setExpandedAbout] = useState(false);
   const [expandedModules, setExpandedModules] = useState({ m1: true, m2: true });
   const [aiInsights, setAiInsights] = useState(null);
@@ -199,11 +198,6 @@ export default function CourseDetailsScreen({ session, user = {}, courseId = "p1
 
   function handleEnrollNow() {
     setShowPaymentModal(true);
-  }
-
-  function handlePaymentComplete(enrolledCourseData) {
-    setIsEnrolledState(true);
-    Alert.alert("Course Unlocked! 🎉", `Congratulations! You now have full lifetime access to "${enrolledCourseData?.title || "the course"}".`);
   }
 
   function handleShare() {

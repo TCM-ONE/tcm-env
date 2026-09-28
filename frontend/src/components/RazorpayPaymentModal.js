@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Modal,
   View,
@@ -7,63 +7,20 @@ import {
   TouchableOpacity,
   Pressable,
   ScrollView,
-  Linking,
-  Alert,
-  TextInput,
   KeyboardAvoidingView,
   Platform
 } from "react-native";
-import { Feather, MaterialCommunityIcons, FontAwesome5 } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "../context/ThemeContext";
 import { fonts } from "../constants/fonts";
 import { shadow } from "../constants/theme";
 
-export default function RazorpayPaymentModal({ visible, course, onClose, onPaymentComplete }) {
+export default function RazorpayPaymentModal({ visible, course, onClose }) {
   const { theme } = useTheme();
-  const [utrInput, setUtrInput] = useState("");
-  const [showUtrField, setShowUtrField] = useState(false);
-  const [confirming, setConfirming] = useState(false);
 
   if (!visible || !course) return null;
 
   const courseTitle = course.title || "TCM One Course";
-  const coursePrice = course.price || "₹1,499";
-  const originalPrice = course.originalPrice || "₹4,999";
-  const whatsappNumber = "9238695500";
-
-  function handleOpenWhatsApp() {
-    const message = `Hi TCM One Support Team! I want to purchase the course: "${courseTitle}" (${coursePrice}). Please share payment details so I can complete my purchase.`;
-    const encoded = encodeURIComponent(message);
-    const url = `https://wa.me/91${whatsappNumber}?text=${encoded}`;
-
-    Linking.openURL(url).catch(() => {
-      Alert.alert(
-        "WhatsApp Contact",
-        `Please send a message to +91 ${whatsappNumber} with course title: "${courseTitle}".`
-      );
-    });
-  }
-
-  function handleConfirmPayment() {
-    setConfirming(true);
-    setTimeout(() => {
-      setConfirming(false);
-      Alert.alert(
-        "Payment Verification Submitted",
-        `Thank you. Your request for "${courseTitle}" has been recorded. Once verified, your course access will be unlocked.`,
-        [
-          {
-            text: "Access Course Now",
-            onPress: () => {
-              onPaymentComplete?.(course);
-              onClose?.();
-            }
-          }
-        ]
-      );
-    }, 800);
-  }
-
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
@@ -80,8 +37,8 @@ export default function RazorpayPaymentModal({ visible, course, onClose, onPayme
                   <MaterialCommunityIcons name="credit-card-chip-outline" size={20} color="#0066FF" />
                 </View>
                 <View>
-                  <Text style={[styles.headerTitle, { color: theme.text }]}>Razorpay Checkout</Text>
-                  <Text style={[styles.headerSub, { color: theme.subtext }]}>Instant Payment & Access</Text>
+                  <Text style={[styles.headerTitle, { color: theme.text }]}>Course checkout</Text>
+                  <Text style={[styles.headerSub, { color: theme.subtext }]}>Payments are not enabled yet</Text>
                 </View>
               </View>
               <Pressable hitSlop={12} onPress={onClose} style={[styles.closeBtn, { backgroundColor: theme.isDark ? "#1E293B" : "#F1F5F9" }]}>
@@ -94,54 +51,17 @@ export default function RazorpayPaymentModal({ visible, course, onClose, onPayme
               <View style={[styles.courseCard, { backgroundColor: theme.isDark ? "#1E293B" : "#F8FAFC", borderColor: theme.border }]}>
                 <View style={{ flex: 1, paddingRight: 10 }}>
                   <Text numberOfLines={2} style={[styles.courseTitle, { color: theme.text }]}>{courseTitle}</Text>
-                  <Text style={[styles.courseCategory, { color: theme.subtext }]}>{course.category || "TCM One Certification"} • Lifetime Access</Text>
-                </View>
-                <View style={{ alignItems: "flex-end" }}>
-                  <Text style={[styles.priceText, { color: theme.primary }]}>{coursePrice}</Text>
-                  {originalPrice ? <Text style={styles.originalPriceText}>{originalPrice}</Text> : null}
+                  <Text style={[styles.courseCategory, { color: theme.subtext }]}>{course.category || "TCM One Course"}</Text>
                 </View>
               </View>
 
-              {/* Direct WhatsApp Connect Action (Theme Aligned) */}
-              <TouchableOpacity
-                onPress={handleOpenWhatsApp}
-                style={[styles.whatsappButton, { backgroundColor: theme.badgeBg, borderColor: theme.border, borderWidth: 1 }]}
-                activeOpacity={0.85}
-              >
-                <FontAwesome5 name="whatsapp" size={18} color={theme.primary} style={{ marginRight: 8 }} />
-                <Text style={[styles.whatsappButtonText, { color: theme.primary }]}>Connect with Course Provider on WhatsApp</Text>
-              </TouchableOpacity>
+              <View style={[styles.checkoutNotice, { backgroundColor: theme.isDark ? "#3A2E18" : "#FFFBEB", borderColor: theme.isDark ? "#6B4F1D" : "#FDE68A" }]}>
+                <Feather name="info" size={17} color={theme.isDark ? "#FDE68A" : "#92400E"} />
+                <Text style={[styles.checkoutNoticeText, { color: theme.isDark ? "#FDE68A" : "#78350F" }]}>Secure checkout is being prepared. This screen does not accept payment details or unlock courses. Access will be granted only after TCM verifies enrollment.</Text>
+              </View>
 
-              {/* UTR Optional Input Toggle */}
-              {!showUtrField ? (
-                <TouchableOpacity
-                  onPress={() => setShowUtrField(true)}
-                  style={[styles.utrToggleBtn, { backgroundColor: theme.badgeBg, borderColor: theme.border }]}
-                >
-                  <Feather name="shield-check" size={16} color={theme.primary} style={{ marginRight: 6 }} />
-                  <Text style={[styles.utrToggleText, { color: theme.primary }]}>Enter Transaction / UTR Ref ID (Optional)</Text>
-                </TouchableOpacity>
-              ) : (
-                <View style={{ marginTop: 4 }}>
-                  <TextInput
-                    placeholder="Enter 12-digit UTR / UPI Ref Number"
-                    placeholderTextColor={theme.subtext}
-                    style={[styles.utrInput, { backgroundColor: theme.isDark ? "#1E293B" : "#F8FAFC", color: theme.text, borderColor: theme.border }]}
-                    value={utrInput}
-                    onChangeText={setUtrInput}
-                  />
-                </View>
-              )}
-
-              {/* Complete Payment Button */}
-              <TouchableOpacity
-                onPress={handleConfirmPayment}
-                style={[styles.confirmButton, { backgroundColor: theme.primary }]}
-                activeOpacity={0.85}
-                disabled={confirming}
-              >
-                <Feather name="check-circle" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                <Text style={styles.confirmButtonText}>{confirming ? "Processing Access..." : "Complete Payment & Unlock Course"}</Text>
+              <TouchableOpacity onPress={onClose} style={[styles.confirmButton, { backgroundColor: theme.primary }]} activeOpacity={0.85}>
+                <Text style={styles.confirmButtonText}>Close</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -207,6 +127,15 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12
   },
+  checkoutNotice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1
+  },
+  checkoutNoticeText: { flex: 1, fontSize: 13, lineHeight: 20 },
   courseCard: {
     flexDirection: "row",
     justifyContent: "space-between",

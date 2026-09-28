@@ -7,6 +7,7 @@ import { AuditLog } from "../models/AuditLog.js";
 import { Cohort } from "../models/Cohort.js";
 import { CohortInvitation } from "../models/CohortInvitation.js";
 import { CohortMembership } from "../models/CohortMembership.js";
+import { Course } from "../models/Course.js";
 import { LearnerConsent } from "../models/LearnerConsent.js";
 import { LearnerOnboarding } from "../models/LearnerOnboarding.js";
 import { User } from "../models/User.js";
@@ -171,6 +172,59 @@ onboardingRouter.patch("/:cohortId/invitations/:invitationId/revoke", requireAdm
       return invitation;
     });
     res.json({ invitation: { id: revoked._id, status: revoked.status, revokedAt: revoked.revokedAt } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+onboardingRouter.post("/invitations/preview", inviteAttemptLimit, async (req, res, next) => {
+  try {
+    const rawToken = req.body.token;
+    const email = normalizeEmail(req.user?.email);
+    if (typeof rawToken !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(rawToken) || !validEmail(email)) {
+      return unavailable(res);
+    }
+
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const invitation = await CohortInvitation.findOne({
+      tokenHash,
+      email,
+      status: "pending",
+      expiresAt: { $gt: new Date() }
+    }).select("cohortId").lean();
+    if (!invitation) return unavailable(res);
+
+    const cohort = await Cohort.findById(invitation.cohortId)
+      .select("courseId title description lifecycle timezone startsAt endsAt instructorIds")
+      .lean();
+    if (!cohort || !["enrolling", "active"].includes(cohort.lifecycle)) return unavailable(res);
+
+    const [course, instructors] = await Promise.all([
+      Course.findById(cohort.courseId).select("title subtitle description level language duration").lean(),
+      cohort.instructorIds?.length
+        ? User.find({ _id: { $in: cohort.instructorIds }, role: { $in: ["mentor", "partner", "admin"] } }).select("name role").lean()
+        : []
+    ]);
+
+    res.json({
+      preview: {
+        title: cohort.title,
+        description: cohort.description || "",
+        lifecycle: cohort.lifecycle,
+        timezone: cohort.timezone,
+        startsAt: cohort.startsAt,
+        endsAt: cohort.endsAt,
+        course: course ? {
+          title: course.title,
+          subtitle: course.subtitle || "",
+          description: course.description || "",
+          level: course.level || "",
+          language: course.language || "",
+          duration: course.duration || ""
+        } : null,
+        instructors: (instructors || []).map(({ _id, name, role }) => ({ id: _id, name, role }))
+      }
+    });
   } catch (error) {
     next(error);
   }

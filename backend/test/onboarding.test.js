@@ -8,6 +8,7 @@ import { AuditLog } from "../src/models/AuditLog.js";
 import { Cohort } from "../src/models/Cohort.js";
 import { CohortInvitation } from "../src/models/CohortInvitation.js";
 import { CohortMembership } from "../src/models/CohortMembership.js";
+import { Course } from "../src/models/Course.js";
 import { LearnerConsent } from "../src/models/LearnerConsent.js";
 import { LearnerOnboarding } from "../src/models/LearnerOnboarding.js";
 import { User } from "../src/models/User.js";
@@ -30,12 +31,25 @@ test("invitation acceptance is email-bound, one-use, resumable, private, and gat
     cohort: "507f1f77bcf86cd799439021",
     invitation: "507f1f77bcf86cd799439031",
     membership: "507f1f77bcf86cd799439041",
-    onboarding: "507f1f77bcf86cd799439051"
+    onboarding: "507f1f77bcf86cd799439051",
+    course: "507f1f77bcf86cd799439061",
+    instructor: "507f1f77bcf86cd799439071"
   };
   const token = "A".repeat(43);
   const tokenHash = (await import("node:crypto")).createHash("sha256").update(token).digest("hex");
   const user = { _id: ids.user, email: "learner@example.test", name: "Learner", role: "student" };
-  const cohort = { _id: ids.cohort, lifecycle: "enrolling" };
+  const cohort = {
+    _id: ids.cohort,
+    courseId: ids.course,
+    title: "Cybersecurity Foundations — September Cohort",
+    description: "A two-month, instructor-led introduction to defensive security.",
+    lifecycle: "enrolling",
+    timezone: "Asia/Kolkata",
+    startsAt: new Date("2026-10-01T12:00:00.000Z"),
+    endsAt: new Date("2026-11-30T12:00:00.000Z"),
+    instructorIds: [ids.instructor]
+  };
+  const course = { title: "Cybersecurity Basics", subtitle: "Learn security fundamentals safely", description: "Build a foundation in practical cybersecurity.", level: "Beginner", language: "English", duration: "2 months" };
   let invitationStatus = "pending";
   let invitationExpired = false;
   let membershipStatus = "invited";
@@ -54,6 +68,8 @@ test("invitation acceptance is email-bound, one-use, resumable, private, and gat
   let auditWrites = 0;
   const originals = {
     userFindById: User.findById,
+    userFind: User.find,
+    courseFindById: Course.findById,
     invitationFindOne: CohortInvitation.findOne,
     invitationFindOneAndUpdate: CohortInvitation.findOneAndUpdate,
     cohortFindById: Cohort.findById,
@@ -66,6 +82,8 @@ test("invitation acceptance is email-bound, one-use, resumable, private, and gat
     auditCreate: AuditLog.create
   };
   User.findById = (id) => queryResult(String(id) === ids.user ? user : String(id) === ids.other ? { ...user, _id: ids.other, email: "other@example.test" } : null);
+  User.find = () => queryResult([{ _id: ids.instructor, name: "TCM Instructor", role: "mentor" }]);
+  Course.findById = () => queryResult(course);
   CohortInvitation.findOne = (filter) => queryResult(
     filter.email === user.email && invitationStatus === "pending" && !invitationExpired && filter.tokenHash === tokenHash
       ? { _id: ids.invitation, cohortId: ids.cohort, invitedBy: ids.user, expiresAt: new Date(Date.now() + 3600000) }
@@ -123,7 +141,25 @@ test("invitation acceptance is email-bound, one-use, resumable, private, and gat
     const expired = await fetch(`${base}/invitations/accept`, { method: "POST", headers: auth(), body: JSON.stringify({ token }) });
     assert.equal(expired.status, 404);
     assert.equal((await expired.json()).code, "INVITATION_UNAVAILABLE");
+    const expiredPreview = await fetch(`${base}/invitations/preview`, { method: "POST", headers: auth(), body: JSON.stringify({ token }) });
+    assert.equal(expiredPreview.status, 404);
+    assert.equal((await expiredPreview.json()).code, "INVITATION_UNAVAILABLE");
     invitationExpired = false;
+
+    const mismatchPreview = await fetch(`${base}/invitations/preview`, { method: "POST", headers: auth(ids.other), body: JSON.stringify({ token }) });
+    assert.equal(mismatchPreview.status, 404);
+    assert.equal((await mismatchPreview.json()).code, "INVITATION_UNAVAILABLE");
+
+    const previewResponse = await fetch(`${base}/invitations/preview`, { method: "POST", headers: auth(), body: JSON.stringify({ token }) });
+    assert.equal(previewResponse.status, 200);
+    const preview = (await previewResponse.json()).preview;
+    assert.equal(preview.title, cohort.title);
+    assert.equal(preview.course.title, course.title);
+    assert.equal(preview.instructors[0].name, "TCM Instructor");
+    assert.equal(preview.lifecycle, "enrolling");
+    assert.equal(invitationStatus, "pending");
+    assert.equal(JSON.stringify(preview).includes(user.email), false);
+    assert.equal(JSON.stringify(preview).includes(token), false);
 
     const accepted = await fetch(`${base}/invitations/accept`, { method: "POST", headers: auth(), body: JSON.stringify({ token }) });
     assert.equal(accepted.status, 200);
@@ -177,6 +213,8 @@ test("invitation acceptance is email-bound, one-use, resumable, private, and gat
     server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
     User.findById = originals.userFindById;
+    User.find = originals.userFind;
+    Course.findById = originals.courseFindById;
     CohortInvitation.findOne = originals.invitationFindOne;
     CohortInvitation.findOneAndUpdate = originals.invitationFindOneAndUpdate;
     Cohort.findById = originals.cohortFindById;

@@ -342,6 +342,44 @@ export function getProfile(token) {
   });
 }
 
+export function previewCohortInvitation(token, invitationToken) {
+  return request("/onboarding/invitations/preview", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ token: invitationToken })
+  });
+}
+
+export function acceptCohortInvitation(token, invitationToken) {
+  return request("/onboarding/invitations/accept", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ token: invitationToken })
+  });
+}
+
+export function getLearnerOnboarding(token, cohortId) {
+  return request(`/onboarding/${encodeURIComponent(cohortId)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+export function saveLearnerOnboardingProfile(token, cohortId, profile) {
+  return request(`/onboarding/${encodeURIComponent(cohortId)}/profile`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(profile)
+  });
+}
+
+export function completeLearnerOnboarding(token, cohortId, consent) {
+  return request(`/onboarding/${encodeURIComponent(cohortId)}/complete`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(consent)
+  });
+}
+
 export async function updateProfile(token, payload) {
   try {
     return await request("/profile", {
@@ -1366,6 +1404,5 @@ export function submitGovernmentMockTest(testId, payload) {
     body: JSON.stringify(payload)
   });
 }
-
 
 

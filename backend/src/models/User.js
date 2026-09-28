@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    googleSubject: { type: String, trim: true, unique: true, sparse: true },
     role: {
       type: String,
       enum: ["student", "mentor", "admin", "partner"],

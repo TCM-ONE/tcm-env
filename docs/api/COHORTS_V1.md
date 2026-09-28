@@ -31,13 +31,11 @@ Creates a cohort. Required fields are `courseId`, `code`, `title`, `capacity`, `
 
 ### `POST /:cohortId/memberships`
 
-Adds a learner membership. Required field: `userId`. Optional fields: `status` (`invited` or `active`), `enrollmentSource`, `accessStartsAt`, and `accessEndsAt`.
-
-The operation is idempotent for the tuple `(cohortId, userId, learner)`: an existing membership is returned with `created: false`. Capacity includes invited, active, and paused memberships.
+Direct membership creation is disabled. It returns `409 INVITATION_REQUIRED`. Use the single-use invitation endpoints in [the learner onboarding contract](LEARNER_ONBOARDING_V1.md), which verifies the account email and records consent before activation.
 
 ### `PATCH /:cohortId/memberships/:membershipId`
 
-Changes membership status to `active`, `paused`, `completed`, or `revoked`.
+Changes membership status to `paused`, `completed`, or `revoked`. A learner can be paused or completed only from the active state. Administrators cannot manually activate a learner; activation requires completed onboarding and accepted consent.
 
 All mutations require an administrator and produce an audit record containing the actor, action, target, outcome, request metadata, and non-secret identifiers. An audit intent must be persisted before the domain mutation starts.
 

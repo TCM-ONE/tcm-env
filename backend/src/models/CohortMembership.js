@@ -4,6 +4,7 @@ const cohortMembershipSchema = new mongoose.Schema(
   {
     cohortId: { type: mongoose.Schema.Types.ObjectId, ref: "Cohort", required: true, index: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    invitationId: { type: mongoose.Schema.Types.ObjectId, ref: "CohortInvitation", index: true },
     role: { type: String, enum: ["learner", "assistant"], default: "learner" },
     status: {
       type: String,

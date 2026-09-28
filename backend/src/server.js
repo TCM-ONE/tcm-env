@@ -15,6 +15,7 @@ import { jobsRouter } from "./routes/jobs.js";
 import { governmentRouter } from "./routes/government.js";
 import { adminRouter } from "./routes/admin.js";
 import { cohortsRouter } from "./routes/cohorts.js";
+import { onboardingRouter } from "./routes/onboarding.js";
 import path from "path";
 import { uploadsRouter, UPLOADS_DIR, getMediaFromDb, saveMediaToDb } from "./routes/uploads.js";
 import { OutboxEvent } from "./models/OutboxEvent.js";
@@ -90,6 +91,7 @@ app.use("/api/jobs", jobsRouter);
 app.use("/api/government", governmentRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/cohorts", cohortsRouter);
+app.use("/api/onboarding", onboardingRouter);
 app.use("/api/uploads", uploadsRouter);
 
 try {

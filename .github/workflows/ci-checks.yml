@@ -36,8 +36,8 @@ jobs:
       - name: Install backend dependencies
         run: npm ci --workspace=backend
 
-      - name: Production persistence and startup regression checks
-        run: node --test backend/test/production.test.js
+      - name: Backend regression and authorization checks
+        run: npm test --workspace=backend
 
       - name: Verify standalone deployment lockfile
         working-directory: backend

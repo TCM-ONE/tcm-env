@@ -8,6 +8,7 @@ const liveSessionSchema = new mongoose.Schema(
     schemaVersion: { type: Number, default: 1 },
     programId: { type: mongoose.Schema.Types.ObjectId, ref: "Program", index: true },
     courseId: { type: mongoose.Schema.Types.ObjectId, ref: "Course", index: true },
+    cohortId: { type: mongoose.Schema.Types.ObjectId, ref: "Cohort", index: true },
     title: { type: String, required: true },
     description: String,
     host: String,

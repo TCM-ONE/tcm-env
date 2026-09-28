@@ -49,7 +49,7 @@ jobs:
       - name: Check backend before touching production
         run: |
           npm ci --workspace=backend --no-audit --no-fund
-          node --test backend/test/production.test.js
+          npm test --workspace=backend
 
       - name: Stage and activate release with rollback
         env:

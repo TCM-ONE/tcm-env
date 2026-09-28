@@ -123,7 +123,7 @@ jobs:
       - name: Report deployment status
         if: always()
         continue-on-error: true
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           DEPLOY_ENV: app-thecodemunk-in
         with:

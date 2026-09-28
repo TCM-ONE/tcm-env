@@ -16,6 +16,7 @@ permissions:
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    environment: tcm-mobile-release
     timeout-minutes: 120
     env:
       EXPO_PUBLIC_API_URL: ${{ vars.TCM_API_URL || 'https://api.thecodemunk.in/api' }}
@@ -143,6 +144,19 @@ jobs:
           java -jar /tmp/bundletool.jar validate --bundle=dist/app-release.aab
           echo "APK + AAB signatures verified"
 
+      - name: Install verified SSH host key
+        env:
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          OCI_HOST: ${{ vars.BACKEND_HOST }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KNOWN_HOSTS"
+          test -n "$OCI_HOST"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          ssh-keygen -F "$OCI_HOST" -f ~/.ssh/known_hosts >/dev/null
+
       - name: Set up SSH agent for OCI VM
         uses: webfactory/ssh-agent@v0.10.0
         with:
@@ -150,16 +164,16 @@ jobs:
 
       - name: Push APK + AAB to OCI VM (atomic)
         env:
-          OCI_HOST: ${{ secrets.OCI_HOST }}
-          OCI_USER: ${{ secrets.OCI_USER }}
+          OCI_HOST: ${{ vars.BACKEND_HOST }}
+          OCI_USER: ${{ vars.BACKEND_USER }}
         run: |
           set -euo pipefail
           HOST="$OCI_HOST"
           USER="$OCI_USER"
-          ssh -o StrictHostKeyChecking=accept-new "$USER@$HOST" 'mkdir -p /opt/tcm/dist && rm -rf /opt/tcm/dist/.upload-'
-          scp -q frontend/dist/app-preview.apk "$USER@$HOST:/opt/tcm/dist/.upload-app-preview.apk"
-          scp -q frontend/dist/app-release.aab "$USER@$HOST:/opt/tcm/dist/.upload-app-release.aab"
-          ssh -q "$USER@$HOST" 'cd /opt/tcm/dist && mv -f .upload-app-preview.apk app-preview.apk && mv -f .upload-app-release.aab app-release.aab'
+          ssh -o StrictHostKeyChecking=yes "$USER@$HOST" 'mkdir -p /opt/tcm/dist && rm -rf /opt/tcm/dist/.upload-'
+          scp -q -o StrictHostKeyChecking=yes frontend/dist/app-preview.apk "$USER@$HOST:/opt/tcm/dist/.upload-app-preview.apk"
+          scp -q -o StrictHostKeyChecking=yes frontend/dist/app-release.aab "$USER@$HOST:/opt/tcm/dist/.upload-app-release.aab"
+          ssh -q -o StrictHostKeyChecking=yes "$USER@$HOST" 'cd /opt/tcm/dist && mv -f .upload-app-preview.apk app-preview.apk && mv -f .upload-app-release.aab app-release.aab'
 
       - name: Publish to GitHub Release (temporary hosting)
         env:
@@ -200,15 +214,15 @@ jobs:
 
       - name: Mint one-time secret download links
         env:
-          OCI_USER: ${{ secrets.OCI_USER }}
-          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ vars.BACKEND_USER }}
+          OCI_HOST: ${{ vars.BACKEND_HOST }}
         run: |
           set -euo pipefail
           HOST="$OCI_HOST"
           USER="$OCI_USER"
           mint_link() {
             local file="$1"
-            ssh -q -o StrictHostKeyChecking=accept-new "$USER@$HOST" \
+            ssh -q -o StrictHostKeyChecking=yes "$USER@$HOST" \
               "DL_TOKEN=\$(sudo grep '^DL_ADMIN_TOKEN=' /opt/tcm/dl-server/.env | cut -d= -f2-) && \
                curl -fsS --max-time 15 -X POST \
                  -H \"X-DL-Admin: \$DL_TOKEN\" \

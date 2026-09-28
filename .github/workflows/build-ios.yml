@@ -16,6 +16,7 @@ permissions:
 jobs:
   build-ios:
     runs-on: macos-latest
+    environment: tcm-mobile-release
     timeout-minutes: 120
     env:
       EXPO_PUBLIC_API_URL: ${{ vars.TCM_API_URL || 'https://api.thecodemunk.in/api' }}
@@ -116,7 +117,8 @@ jobs:
         working-directory: frontend/ios
         run: |
           set -euo pipefail
-          WS="$(ls -d *.xcworkspace | head -1)"
+          WS="$(find . -maxdepth 1 -type d -name '*.xcworkspace' -print -quit)"
+          test -n "$WS"
           SCHEME="$(xcodebuild -list -workspace "$WS" 2>/dev/null | awk '/Schemes:/{getline; print; exit}' | sed 's/^ *//')"
           echo "workspace: $WS scheme: $SCHEME"
           xcodebuild -workspace "$WS" -scheme "$SCHEME" -configuration Release \

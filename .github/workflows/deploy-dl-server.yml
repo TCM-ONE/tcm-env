@@ -15,8 +15,22 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: tcm-backend
     steps:
       - uses: actions/checkout@v7
+
+      - name: Install verified SSH host key
+        env:
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ vars.BACKEND_HOST }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KNOWN_HOSTS"
+          test -n "$DEPLOY_HOST"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          ssh-keygen -F "$DEPLOY_HOST" -f ~/.ssh/known_hosts >/dev/null
 
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.10.0
@@ -25,34 +39,34 @@ jobs:
 
       - name: Show current Caddyfile (before change)
         env:
-          OCI_USER: ${{ secrets.OCI_USER }}
-          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ vars.BACKEND_USER }}
+          OCI_HOST: ${{ vars.BACKEND_HOST }}
         run: |
-          ssh -o StrictHostKeyChecking=accept-new "$OCI_USER@$OCI_HOST" \
+          ssh -o StrictHostKeyChecking=yes "$OCI_USER@$OCI_HOST" \
             "echo '-- current Caddyfile --'; sudo cat /etc/caddy/Caddyfile 2>/dev/null || echo 'no Caddyfile found'"
 
       - name: Sync dl-server source + provision env
         env:
-          OCI_USER: ${{ secrets.OCI_USER }}
-          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ vars.BACKEND_USER }}
+          OCI_HOST: ${{ vars.BACKEND_HOST }}
           DL_ADMIN_TOKEN: ${{ secrets.DL_ADMIN_TOKEN }}
         run: |
           set -euo pipefail
-          ssh -o StrictHostKeyChecking=accept-new "$OCI_USER@$OCI_HOST" \
+          ssh -o StrictHostKeyChecking=yes "$OCI_USER@$OCI_HOST" \
             "sudo mkdir -p /opt/tcm/dl-server && sudo chown $OCI_USER /opt/tcm/dl-server"
           rsync -avz --delete --exclude 'node_modules' \
-            -e "ssh -o StrictHostKeyChecking=accept-new" \
+            -e "ssh -o StrictHostKeyChecking=yes" \
             ./dl-server/ "$OCI_USER@$OCI_HOST:/opt/tcm/dl-server/"
           printf 'DL_PORT=5200\nDL_ADMIN_TOKEN=%s\nDL_DIST_DIR=/opt/tcm/dist\nDL_TOKENS_FILE=/opt/tcm/dl-server/tokens.json\nDL_BASE_URL=https://api.thecodemunk.in/dl\n' \
             "$DL_ADMIN_TOKEN" > /tmp/tcm-dl.env
-          scp -q -o StrictHostKeyChecking=accept-new /tmp/tcm-dl.env "$OCI_USER@$OCI_HOST:/tmp/tcm-dl.env"
-          ssh -q -o StrictHostKeyChecking=accept-new "$OCI_USER@$OCI_HOST" \
+          scp -q -o StrictHostKeyChecking=yes /tmp/tcm-dl.env "$OCI_USER@$OCI_HOST:/tmp/tcm-dl.env"
+          ssh -q -o StrictHostKeyChecking=yes "$OCI_USER@$OCI_HOST" \
             "sudo mv /tmp/tcm-dl.env /opt/tcm/dl-server/.env && sudo chown root:root /opt/tcm/dl-server/.env && sudo chmod 600 /opt/tcm/dl-server/.env && echo 'DL_ENV_WRITTEN'"
 
       - name: Install deps + write systemd unit + start service
         env:
-          OCI_USER: ${{ secrets.OCI_USER }}
-          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ vars.BACKEND_USER }}
+          OCI_HOST: ${{ vars.BACKEND_HOST }}
           SYSTEMD_UNIT: |-
             [Unit]
             Description=TCM one-time download link server
@@ -73,8 +87,8 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s\n' "$SYSTEMD_UNIT" > /tmp/tcm-dl.service
-          scp -q -o StrictHostKeyChecking=accept-new /tmp/tcm-dl.service "$OCI_USER@$OCI_HOST:/tmp/tcm-dl.service"
-          ssh -o StrictHostKeyChecking=accept-new "$OCI_USER@$OCI_HOST" 'sudo bash -s' <<'UNIT'
+          scp -q -o StrictHostKeyChecking=yes /tmp/tcm-dl.service "$OCI_USER@$OCI_HOST:/tmp/tcm-dl.service"
+          ssh -o StrictHostKeyChecking=yes "$OCI_USER@$OCI_HOST" 'sudo bash -s' <<'UNIT'
           set -euo pipefail
           cd /opt/tcm/dl-server
           if [ -f package.json ]; then npm ci --omit=dev --no-audit --no-fund 2>/dev/null || true; fi
@@ -89,8 +103,8 @@ jobs:
 
       - name: Rewrite Caddyfile (remove basic-auth, proxy /dl to tcm-dl) + reload
         env:
-          OCI_USER: ${{ secrets.OCI_USER }}
-          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ vars.BACKEND_USER }}
+          OCI_HOST: ${{ vars.BACKEND_HOST }}
           CADDYFILE: |-
             api.thecodemunk.in {
                 encode gzip
@@ -120,8 +134,8 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s\n' "$CADDYFILE" > /tmp/tcm-Caddyfile
-          scp -q -o StrictHostKeyChecking=accept-new /tmp/tcm-Caddyfile "$OCI_USER@$OCI_HOST:/tmp/tcm-Caddyfile"
-          ssh -o StrictHostKeyChecking=accept-new "$OCI_USER@$OCI_HOST" 'sudo bash -s' <<'CADDY'
+          scp -q -o StrictHostKeyChecking=yes /tmp/tcm-Caddyfile "$OCI_USER@$OCI_HOST:/tmp/tcm-Caddyfile"
+          ssh -o StrictHostKeyChecking=yes "$OCI_USER@$OCI_HOST" 'sudo bash -s' <<'CADDY'
           set -euo pipefail
           TS=$(date +%s)
           sudo cp /etc/caddy/Caddyfile "/etc/caddy/Caddyfile.bak.$TS"
@@ -136,11 +150,11 @@ jobs:
 
       - name: Verify one-time link end-to-end
         env:
-          OCI_USER: ${{ secrets.OCI_USER }}
-          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ vars.BACKEND_USER }}
+          OCI_HOST: ${{ vars.BACKEND_HOST }}
         run: |
           set -euo pipefail
-          ssh -o StrictHostKeyChecking=accept-new "$OCI_USER@$OCI_HOST" 'sudo bash -s' <<'VERIFY'
+          ssh -o StrictHostKeyChecking=yes "$OCI_USER@$OCI_HOST" 'sudo bash -s' <<'VERIFY'
           set -euo pipefail
           echo "=== tcm-dl service ==="
           systemctl is-active tcm-dl

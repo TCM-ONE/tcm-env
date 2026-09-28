@@ -181,7 +181,7 @@ onboardingRouter.post("/invitations/preview", inviteAttemptLimit, async (req, re
   try {
     const rawToken = req.body.token;
     const email = normalizeEmail(req.user?.email);
-    if (typeof rawToken !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(rawToken) || !validEmail(email)) {
+    if (req.user?.role !== "student" || typeof rawToken !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(rawToken) || !validEmail(email)) {
       return unavailable(res);
     }
 
@@ -235,7 +235,7 @@ onboardingRouter.post("/invitations/accept", inviteAttemptLimit, async (req, res
     const rawToken = req.body.token;
     const userId = userIdOf(req.user);
     const email = normalizeEmail(req.user?.email);
-    if (typeof rawToken !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(rawToken) || !mongoose.isValidObjectId(userId) || !validEmail(email)) {
+    if (req.user?.role !== "student" || typeof rawToken !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(rawToken) || !mongoose.isValidObjectId(userId) || !validEmail(email)) {
       return unavailable(res);
     }
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");

@@ -81,7 +81,7 @@ test("invitation acceptance is email-bound, one-use, resumable, private, and gat
     consentUpdateOne: LearnerConsent.updateOne,
     auditCreate: AuditLog.create
   };
-  User.findById = (id) => queryResult(String(id) === ids.user ? user : String(id) === ids.other ? { ...user, _id: ids.other, email: "other@example.test" } : null);
+  User.findById = (id) => queryResult(String(id) === ids.user ? user : String(id) === ids.other ? { ...user, _id: ids.other, email: "other@example.test" } : String(id) === ids.instructor ? { ...user, _id: ids.instructor, role: "mentor" } : null);
   User.find = () => queryResult([{ _id: ids.instructor, name: "TCM Instructor", role: "mentor" }]);
   Course.findById = () => queryResult(course);
   CohortInvitation.findOne = (filter) => queryResult(
@@ -136,6 +136,12 @@ test("invitation acceptance is email-bound, one-use, resumable, private, and gat
     const mismatch = await fetch(`${base}/invitations/accept`, { method: "POST", headers: auth(ids.other), body: JSON.stringify({ token }) });
     assert.equal(mismatch.status, 404);
     assert.equal((await mismatch.json()).code, "INVITATION_UNAVAILABLE");
+
+    const instructorPreview = await fetch(`${base}/invitations/preview`, { method: "POST", headers: auth(ids.instructor), body: JSON.stringify({ token }) });
+    assert.equal(instructorPreview.status, 404);
+    const instructorAccept = await fetch(`${base}/invitations/accept`, { method: "POST", headers: auth(ids.instructor), body: JSON.stringify({ token }) });
+    assert.equal(instructorAccept.status, 404);
+    assert.equal(invitationStatus, "pending");
 
     invitationExpired = true;
     const expired = await fetch(`${base}/invitations/accept`, { method: "POST", headers: auth(), body: JSON.stringify({ token }) });

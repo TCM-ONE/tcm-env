@@ -114,7 +114,7 @@ jobs:
         run: python3 ../.github/scripts/patch-release-signing.py
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Build APK + AAB (local gradle, no EAS quota)
         working-directory: frontend/android
